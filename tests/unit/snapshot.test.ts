@@ -262,6 +262,66 @@ describe('takeSnapshot', () => {
       expect(snapshot.elements.every((element) => element.list === undefined)).toBe(true);
     });
 
+    it('numbers rows, not the cells inside them', () => {
+      const row = (n: number) =>
+        `<div role="row" class="row" data-rect="0 ${n * 60} 900 56">
+          <div role="gridcell"><button data-rect="0 ${n * 60} 40 40" aria-label="Play ${n}"></button></div>
+          <div role="gridcell"><a href="#${n}" data-rect="50 ${n * 60} 200 20">Song ${n}</a></div>
+          <div role="gridcell">3:0${n}</div>
+        </div>`;
+      const table = (n: number) =>
+        `<tr data-rect="0 ${600 + n * 30} 900 28"><td><a href="#t${n}" data-rect="0 ${600 + n * 30} 100 20">Row ${n}</a></td><td>b</td><td>c</td></tr>`;
+      const { snapshot } = snap(
+        `<div role="rowgroup">${row(1)}${row(2)}${row(3)}</div><table><tbody>${table(1)}${table(2)}${table(3)}</tbody></table>`,
+      );
+      expect(
+        snapshot.elements.map((element) => [element.name, element.list?.index, element.list?.size]),
+      ).toEqual([
+        ['Play 1', 1, 3],
+        ['Song 1', 1, 3],
+        ['Play 2', 2, 3],
+        ['Song 2', 2, 3],
+        ['Play 3', 3, 3],
+        ['Song 3', 3, 3],
+        ['Row 1', 1, 3],
+        ['Row 2', 2, 3],
+        ['Row 3', 3, 3],
+      ]);
+    });
+
+    it('passes over look-alike siblings that are not alike inside', () => {
+      // Every element inside a YouTube video carries the same class; only the videos
+      // themselves are built from one template.
+      const video = (n: number, y: number) =>
+        `<div class="video" data-rect="0 ${y} 900 200">
+          <div class="scoped" data-rect="400 ${y} 500 40"><h3><a href="/v${n}" data-rect="400 ${y} 400 20">Video ${n}</a></h3><span>badge</span></div>
+          <div class="scoped" data-rect="400 ${y + 50} 500 30"><a href="/c${n}" data-rect="400 ${y + 50} 200 20">Channel ${n}</a></div>
+          <div class="scoped" data-rect="400 ${y + 90} 500 30"><p>description</p><p>more</p><p>even more</p></div>
+          <div class="scoped" hidden></div>
+        </div>`;
+      const { snapshot } = snap(`<main>${video(1, 0)}${video(2, 210)}${video(3, 420)}</main>`);
+      expect(
+        snapshot.elements.map((element) => [element.name, element.list?.index, element.list?.size]),
+      ).toEqual([
+        ['Video 1', 1, 3],
+        ['Channel 1', 1, 3],
+        ['Video 2', 2, 3],
+        ['Channel 2', 2, 3],
+        ['Video 3', 3, 3],
+        ['Channel 3', 3, 3],
+      ]);
+    });
+
+    it('needs three visible items built alike', () => {
+      const { snapshot } = snap(`
+        <header>
+          <div class="section" data-rect="0 0 200 50"><a href="/" data-rect="0 0 100 50">Logo</a></div>
+          <div class="section" data-rect="200 0 600 50"><form><input aria-label="Find" data-rect="200 0 500 50"></form></div>
+          <div class="section" data-rect="800 0 200 50"><button data-rect="800 0 100 50">Sign in</button><span></span></div>
+        </header>`);
+      expect(snapshot.elements.every((element) => element.list === undefined)).toBe(true);
+    });
+
     it('looks no more than eight ancestors up', () => {
       const deep = (label: string, y: number) =>
         `<div class="row" data-rect="0 ${y} 300 30">${'<div>'.repeat(9)}<a href="/${label}" data-rect="0 ${y} 300 30">${label}</a>${'</div>'.repeat(9)}</div>`;
