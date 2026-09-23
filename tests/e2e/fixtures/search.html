@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Search fixture</title>
+  </head>
+  <body>
+    <form role="search" id="search">
+      <input id="q" name="q" placeholder="What do you want to play?" data-testid="search-input" />
+      <button type="submit">Search</button>
+    </form>
+    <p id="state">query:</p>
+    <p id="keys">no key</p>
+    <p id="submits">0</p>
+    <p id="progress"></p>
+    <div id="results"></div>
+    <form id="account">
+      <label>Password <input type="password" id="password" /></label>
+      <label>Card number <input id="card" autocomplete="cc-number" /></label>
+    </form>
+    <label for="note">Note</label>
+    <textarea id="note">my secret note</textarea>
+    <div
+      id="editor"
+      contenteditable="true"
+      aria-label="Message"
+      style="min-height: 40px; border: 1px solid #ccc"
+    ></div>
+    <script>
+      // A controlled input the way React builds one: the instance value setter records what
+      // the framework set, and the input handler only reacts to values it did not set.
+      const input = document.getElementById('q');
+      const native = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+      let tracked = '';
+      let query = '';
+      Object.defineProperty(input, 'value', {
+        configurable: true,
+        get() {
+          return native.get.call(this);
+        },
+        set(value) {
+          tracked = String(value);
+          native.set.call(this, value);
+        },
+      });
+      input.addEventListener('input', () => {
+        const actual = native.get.call(input);
+        if (actual !== tracked) {
+          tracked = actual;
+          query = actual;
+          document.getElementById('state').textContent = 'query: ' + query;
+        }
+      });
+      input.addEventListener('keydown', (event) => {
+        document.getElementById('keys').textContent =
+          event.key + '/' + event.code + '/' + event.keyCode;
+      });
+      document.getElementById('search').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const submits = document.getElementById('submits');
+        submits.textContent = String(Number(submits.textContent) + 1);
+        // Like a page that shows progress while it loads: the DOM keeps changing until the
+        // results arrive, which is what a settling snapshot waits out.
+        const q = query;
+        const progress = document.getElementById('progress');
+        let ticks = 0;
+        progress.textContent = 'Searching';
+        const timer = setInterval(() => {
+          ticks += 1;
+          if (ticks < 10) {
+            progress.textContent += '.';
+            return;
+          }
+          clearInterval(timer);
+          progress.textContent = '';
+          document.getElementById('results').innerHTML = [1, 2, 3]
+            .map((n) => `<a class="hit" href="/target.html?n=${n}">${q} result ${n}</a>`)
+            .join(' ');
+        }, 50);
+      });
+    </script>
+  </body>
+</html>
