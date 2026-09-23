@@ -1,5 +1,6 @@
 // The slice of the Chrome API the service worker uses, behind small interfaces so the
 // handlers can be tested with fakes.
+import { CONTENT_FILE, type ScriptRunner } from './inject';
 
 export type TabsApi = {
   get(tabId: number): Promise<chrome.tabs.Tab>;
@@ -43,6 +44,26 @@ export function chromeBrowserApi(): BrowserApi {
     },
     topSites: {
       get: () => chrome.topSites.get(),
+    },
+  };
+}
+
+export function chromeScriptRunner(): ScriptRunner {
+  return {
+    async inject(tabId) {
+      await chrome.scripting.executeScript({ target: { tabId }, files: [CONTENT_FILE] });
+    },
+    async call(tabId, request, version) {
+      const results = await chrome.scripting.executeScript({
+        target: { tabId },
+        // Serialised and run in the page, so it may use nothing from this module.
+        func: (op: string, args: unknown, expected: string) => {
+          const agent = globalThis.__hypruseBrowser;
+          return agent?.version === expected ? agent.handle(op, args) : null;
+        },
+        args: [request.op, request.args, version],
+      });
+      return results[0]?.result;
     },
   };
 }
