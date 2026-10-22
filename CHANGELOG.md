@@ -2,6 +2,13 @@
 
 This project follows Semantic Versioning. Dates are ISO 8601.
 
+## Unreleased
+
+### Added
+
+- `tabs.open` takes `where: "background"`: the tab opens without being activated and its
+  window is not focused, so the browser does not take the person's focus.
+
 ## 0.1.0 - 2026-09-23
 
 The first release. It speaks protocol version 1 with hypruse's `browser-host`.

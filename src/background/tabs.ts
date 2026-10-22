@@ -66,8 +66,12 @@ export function openableUrl(raw: string): string {
   return url.href;
 }
 
-async function openInNewWindow(api: BrowserApi, url: string): Promise<{ tab_id: number }> {
-  const created = await api.windows.create({ url, focused: true, type: 'normal' });
+async function openInNewWindow(
+  api: BrowserApi,
+  url: string,
+  focused = true,
+): Promise<{ tab_id: number }> {
+  const created = await api.windows.create({ url, focused, type: 'normal' });
   const tabId = created?.tabs?.[0]?.id;
   if (tabId === undefined) throw new ProtocolError('internal', 'the new window has no tab');
   return { tab_id: tabId };
@@ -104,7 +108,10 @@ export function createTabHandlers(api: BrowserApi): TabHandlers {
     'tabs.open': async ({ url, where }) => {
       const href = openableUrl(url);
       const win = await lastFocusedNormalWindow(api);
-      if (win?.id === undefined) return openInNewWindow(api, href);
+      // background: a tab that is not activated, in a window that is not focused, so
+      // the browser does not ask the desktop for focus and the person keeps their view
+      const background = where === 'background';
+      if (win?.id === undefined) return openInNewWindow(api, href, !background);
       if (where === 'current') {
         const [active] = await api.tabs.query({ active: true, windowId: win.id });
         if (active?.id !== undefined) {
@@ -112,7 +119,7 @@ export function createTabHandlers(api: BrowserApi): TabHandlers {
           return { tab_id: active.id };
         }
       }
-      const tab = await api.tabs.create({ windowId: win.id, url: href, active: true });
+      const tab = await api.tabs.create({ windowId: win.id, url: href, active: !background });
       if (tab.id === undefined) throw new ProtocolError('internal', 'the new tab has no id');
       return { tab_id: tab.id };
     },

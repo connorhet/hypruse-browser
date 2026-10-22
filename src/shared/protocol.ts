@@ -40,7 +40,10 @@ export const requestSchemas = {
   ping: noArgs,
   'tabs.list': noArgs,
   'tabs.activate': z.strictObject({ tab_id: tabId }),
-  'tabs.open': z.strictObject({ url: z.string().min(1), where: z.enum(['new', 'current']) }),
+  'tabs.open': z.strictObject({
+    url: z.string().min(1),
+    where: z.enum(['new', 'current', 'background']),
+  }),
   'tabs.close': z.strictObject({ tab_id: tabId }),
   'tabs.history': z.strictObject({ tab_id: tabId, direction: z.enum(['back', 'forward']) }),
   'page.snapshot': z.strictObject({

@@ -74,7 +74,7 @@ A request times out after 20 seconds, plus `settle_ms` for a snapshot.
 | `ping`          | none                                                    | `{extension}`               |
 | `tabs.list`     | none                                                    | `{tabs}`                    |
 | `tabs.activate` | `tab_id`                                                | `{}`                        |
-| `tabs.open`     | `url`, `where`: `new` or `current`                      | `{tab_id}`                  |
+| `tabs.open`     | `url`, `where`: `new`, `current` or `background`        | `{tab_id}`                  |
 | `tabs.close`    | `tab_id`                                                | `{}`                        |
 | `tabs.history`  | `tab_id`, `direction`: `back` or `forward`              | `{}`                        |
 | `page.snapshot` | `tab_id`?, `max`? (120), `settle_ms`? (0)               | a snapshot, below           |
@@ -98,8 +98,10 @@ out. Incognito windows are invisible to the extension.
 
 `tabs.open` accepts absolute `http:` and `https:` URLs only. Anything else, including a string
 that is not a URL at all, is `refused`. `new` opens an active tab in the last focused normal
-window. `current` navigates that window's active tab and returns its id. When no normal window
-exists, either one opens a new window.
+window. `current` navigates that window's active tab and returns its id. `background` opens a tab
+that is not activated in that window, and does not focus the window, so the browser does not
+ask the desktop for focus. When no normal window exists, each opens a new window, unfocused
+for `background`.
 
 `tabs.history` answers `not_found` when there is no page to go back or forward to.
 

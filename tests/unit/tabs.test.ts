@@ -98,6 +98,27 @@ describe('tabs.open', () => {
     expect(browser.tab(tab_id).url).toBe('https://example.com/');
   });
 
+  it('opens an inactive tab for where=background and leaves the active one alone', async () => {
+    const { browser, handlers, front, f2 } = setup();
+    const { tab_id } = (await handlers['tabs.open']({
+      url: 'https://example.com/',
+      where: 'background',
+    })) as { tab_id: number };
+    expect(browser.tab(tab_id)).toMatchObject({ windowId: front, active: false });
+    expect(browser.tab(f2).active).toBe(true);
+  });
+
+  it('opens an unfocused window for where=background when there is none', async () => {
+    const browser = new FakeBrowser();
+    const handlers = createTabHandlers(browser.api());
+    const { tab_id } = (await handlers['tabs.open']({
+      url: 'https://example.com/',
+      where: 'background',
+    })) as { tab_id: number };
+    expect(browser.tab(tab_id).url).toBe('https://example.com/');
+    expect(browser.windows.every((win) => !win.focused)).toBe(true);
+  });
+
   it('refuses anything but http and https', async () => {
     const { handlers } = setup();
     for (const url of [
