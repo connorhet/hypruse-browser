@@ -2,7 +2,10 @@
 
 This project follows Semantic Versioning. Dates are ISO 8601.
 
-## Unreleased
+## 0.2.0 - 2026-10-22
+
+Speaks protocol version 1, with the additions below. Load or reload this build: Chrome
+keeps running the old service worker of an unpacked extension whose version did not change.
 
 ### Added
 
