@@ -34,6 +34,9 @@ const handle = z.string().min(1);
 const noArgs = z.strictObject({});
 
 export const MAX_ELEMENTS = 1000;
+// An upload arrives in chunks, since Chrome caps a message from the host at 1 MB.
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+export const MAX_UPLOAD_CHUNKS = 64;
 export const MAX_SETTLE_MS = 10_000;
 
 export const requestSchemas = {
@@ -61,6 +64,19 @@ export const requestSchemas = {
   'page.scroll': z.strictObject({
     tab_id: tabId.optional(),
     direction: z.enum(['up', 'down', 'top', 'bottom']),
+  }),
+  'files.stage': z.strictObject({
+    upload_id: handle,
+    index: z.number().int().nonnegative(),
+    total: z.number().int().min(1).max(MAX_UPLOAD_CHUNKS),
+    data: z.string(),
+  }),
+  'page.upload': z.strictObject({
+    snapshot_id: handle,
+    element_id: handle,
+    upload_id: handle,
+    name: z.string().min(1).max(255),
+    type: z.string().max(255).default(''),
   }),
   'sites.top': noArgs,
 };
@@ -204,7 +220,14 @@ export type PageRequest =
       op: 'type';
       args: { snapshot_id: string; element_id: string; text: string; submit: boolean };
     }
-  | { op: 'scroll'; args: { direction: 'up' | 'down' | 'top' | 'bottom' } };
+  | { op: 'scroll'; args: { direction: 'up' | 'down' | 'top' | 'bottom' } }
+  | {
+      op: 'upload';
+      args: { snapshot_id: string; element_id: string; name: string; type: string; data: string };
+    };
+
+// What a page.upload answers: the file as the field now holds it.
+export type UploadResult = { name: string; size: number; files: number };
 
 export type PageResult = { ok: true; result: unknown } | { ok: false; error: ErrorBody };
 

@@ -69,19 +69,21 @@ A request times out after 20 seconds, plus `settle_ms` for a snapshot.
 
 ## Operations
 
-| op              | args                                                    | result                      |
-| --------------- | ------------------------------------------------------- | --------------------------- |
-| `ping`          | none                                                    | `{extension}`               |
-| `tabs.list`     | none                                                    | `{tabs}`                    |
-| `tabs.activate` | `tab_id`                                                | `{}`                        |
-| `tabs.open`     | `url`, `where`: `new`, `current` or `background`        | `{tab_id}`                  |
-| `tabs.close`    | `tab_id`                                                | `{}`                        |
-| `tabs.history`  | `tab_id`, `direction`: `back` or `forward`              | `{}`                        |
-| `page.snapshot` | `tab_id`?, `max`? (120), `settle_ms`? (0)               | a snapshot, below           |
-| `page.click`    | `snapshot_id`, `element_id`                             | `{}`                        |
-| `page.type`     | `snapshot_id`, `element_id`, `text`, `submit`? (false)  | `{}`                        |
-| `page.scroll`   | `tab_id`?, `direction`: `up`, `down`, `top` or `bottom` | `{scroll_y, scroll_height}` |
-| `sites.top`     | none                                                    | `{sites}`                   |
+| op              | args                                                      | result                      |
+| --------------- | --------------------------------------------------------- | --------------------------- |
+| `ping`          | none                                                      | `{extension}`               |
+| `tabs.list`     | none                                                      | `{tabs}`                    |
+| `tabs.activate` | `tab_id`                                                  | `{}`                        |
+| `tabs.open`     | `url`, `where`: `new`, `current` or `background`          | `{tab_id}`                  |
+| `tabs.close`    | `tab_id`                                                  | `{}`                        |
+| `tabs.history`  | `tab_id`, `direction`: `back` or `forward`                | `{}`                        |
+| `page.snapshot` | `tab_id`?, `max`? (120), `settle_ms`? (0)                 | a snapshot, below           |
+| `page.click`    | `snapshot_id`, `element_id`                               | `{}`                        |
+| `page.type`     | `snapshot_id`, `element_id`, `text`, `submit`? (false)    | `{}`                        |
+| `page.scroll`   | `tab_id`?, `direction`: `up`, `down`, `top` or `bottom`   | `{scroll_y, scroll_height}` |
+| `files.stage`   | `upload_id`, `index`, `total`, `data` (base64)            | `{received}`                |
+| `page.upload`   | `snapshot_id`, `element_id`, `upload_id`, `name`, `type`? | `{name, size, files}`       |
+| `sites.top`     | none                                                      | `{sites}`                   |
 
 A `?` marks an optional argument, with its default in parentheses. `max` runs from 1 to 1000
 and `settle_ms` from 0 to 10000. Without `tab_id`, page operations use the active tab of the
@@ -270,6 +272,22 @@ editable region gets `document.execCommand("insertText")`.
 With `submit`, it then dispatches `keydown`, `keypress` and `keyup` for Enter (key `Enter`, code
 `Enter`, keyCode 13). If the `keydown` was not cancelled and the field is in a form, it calls
 `form.requestSubmit()`.
+
+### Upload
+
+`page.upload` puts one file in a file field, as choosing it in the browser's picker would. No
+picker opens: Chrome shows one only for a real click. The file arrives first, in chunks, with
+`files.stage`, since Chrome caps a message from the host at 1 MB: each chunk is a piece of the
+file's base64, `index` counts from 0 to `total - 1` (at most 64), and the chunks may arrive in any
+order. The service worker keeps them for 60 seconds, at most 4 uploads at once and 10 MB per
+upload (`refused` past either), and `page.upload` takes them: an upload with a chunk missing is
+`bad_request`, and an `upload_id` already taken or never staged is `not_found`.
+
+The target is the element itself when it is an `input[type=file]`, the field a `<label>` names, or
+the first file field inside the element (a drop zone around a hidden input). Anything else, or a
+disabled field, is `refused`. The field's files are replaced by the one file, then `input` and
+`change` are dispatched, so the page's own handlers see it. Which files may be sent is the host's
+decision: the extension sends what it is given.
 
 ### Scroll
 

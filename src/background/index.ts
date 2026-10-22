@@ -8,12 +8,14 @@ import { createPageHandlers } from './page';
 import { NativeConnection } from './port';
 import { createSiteHandlers } from './sites';
 import { createTabHandlers } from './tabs';
+import { createStagingHandlers, Staging } from './uploads';
 
 const RECONNECT_ALARM = 'hypruse-browser-reconnect';
 
 const version = chrome.runtime.getManifest().version;
 const api = chromeBrowserApi();
 const log = (message: string) => console.debug(`[hypruse-browser] ${message}`);
+const staging = new Staging();
 
 const dispatch = createDispatcher(
   {
@@ -24,7 +26,9 @@ const dispatch = createDispatcher(
       api,
       run: createPageRunner(chromeScriptRunner(), version),
       runFrames: createFrameRunner(chromeScriptRunner(), version),
+      staging,
     }),
+    ...createStagingHandlers(staging),
   },
   { log },
 );

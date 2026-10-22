@@ -8,9 +8,13 @@ import type { BrowserApi } from './chrome';
 import type { Handlers } from './dispatch';
 import { mergeFrames, splitElementId, type FramePage } from './frames';
 import type { FrameRun, PageRun } from './inject';
+import type { Staging } from './uploads';
 import { getTab, resolveTab, type ResolvedTab } from './tabs';
 
-type PageHandlers = Pick<Handlers, 'page.snapshot' | 'page.click' | 'page.type' | 'page.scroll'>;
+type PageHandlers = Pick<
+  Handlers,
+  'page.snapshot' | 'page.click' | 'page.type' | 'page.scroll' | 'page.upload'
+>;
 
 // How many snapshot ids the worker remembers the tab of.
 export const REMEMBERED_SNAPSHOTS = 64;
@@ -31,6 +35,8 @@ export function createPageHandlers(deps: {
   run: PageRun;
   // The page's frames below the top one; without it a snapshot reads the top frame only.
   runFrames?: FrameRun;
+  // Where page.upload finds the file files.stage brought in.
+  staging?: Staging;
   nextSnapshotId?: () => string;
 }): PageHandlers {
   const { api, run } = deps;
@@ -99,6 +105,18 @@ export function createPageHandlers(deps: {
       const request: PageRequest = {
         op: 'type',
         args: { snapshot_id, element_id: id, text, submit },
+      };
+      return frameId === undefined ? run(owner, request) : run(owner, request, frameId);
+    },
+
+    'page.upload': async ({ snapshot_id, element_id, upload_id, name, type }) => {
+      if (!deps.staging) throw new ProtocolError('internal', 'uploads are not wired');
+      const owner = await ownerOf(snapshot_id);
+      const data = deps.staging.take(upload_id);
+      const [frameId, id] = splitElementId(element_id);
+      const request: PageRequest = {
+        op: 'upload',
+        args: { snapshot_id, element_id: id, name, type, data },
       };
       return frameId === undefined ? run(owner, request) : run(owner, request, frameId);
     },

@@ -7,6 +7,7 @@ import { scroll } from './scroll';
 import { settle } from './settle';
 import { takeSnapshot } from './snapshot';
 import { typeText } from './type';
+import { uploadFile } from './upload';
 
 // The object content.js installs in each document. The service worker calls handle() through
 // chrome.scripting.executeScript with arguments it has already validated.
@@ -36,6 +37,13 @@ export function createAgent(doc: Document, geometry: Geometry, version: string):
         return {};
       case 'scroll':
         return scroll(doc, geometry, request.args.direction);
+      case 'upload':
+        return uploadFile(
+          registry.resolve(request.args.snapshot_id, request.args.element_id),
+          request.args.name,
+          request.args.type,
+          request.args.data,
+        );
       default:
         throw new PageError(
           'bad_request',

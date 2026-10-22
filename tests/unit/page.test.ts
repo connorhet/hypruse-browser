@@ -6,6 +6,7 @@ import {
   type ScriptRunner,
 } from '../../src/background/inject';
 import { createPageHandlers, snapshotIds } from '../../src/background/page';
+import { Staging } from '../../src/background/uploads';
 import type { ResolvedTab } from '../../src/background/tabs';
 import { ProtocolError, type PageRequest, type Snapshot } from '../../src/shared/protocol';
 import { FakeBrowser } from '../helpers/fake-browser';
@@ -393,5 +394,67 @@ describe('createFrameRunner', () => {
 
   it('calls a stale frame stale', () => {
     expect(injectionError(new Error('No frame with id 12 in tab 7.')).code).toBe('stale_snapshot');
+  });
+});
+
+describe('page.upload', () => {
+  it('takes the staged file and sends it to the element, in its frame', async () => {
+    const browser = new FakeBrowser();
+    const win = browser.addWindow({ focused: true });
+    browser.addTab(win, 'https://jobs.example/', { active: true });
+    const run = vi.fn(async (_target: ResolvedTab, request: PageRequest) =>
+      request.op === 'snapshot'
+        ? {
+            snapshot_id: request.args.snapshot_id,
+            url: 'https://jobs.example/',
+            title: '',
+            headings: '',
+            viewport: { width: 1, height: 1, dpr: 1, scroll_y: 0, scroll_height: 1 },
+            elements: [],
+          }
+        : { name: 'cv.pdf', size: 3, files: 1 },
+    );
+    const staging = new Staging();
+    const handlers = createPageHandlers({
+      api: browser.api(),
+      run,
+      staging,
+      nextSnapshotId: () => 's1-test',
+    });
+    await handlers['page.snapshot']({ max: 120, settle_ms: 0 });
+    staging.stage('u1', 0, 1, 'YWJj');
+    await handlers['page.upload']({
+      snapshot_id: 's1-test',
+      element_id: 'f4.e2',
+      upload_id: 'u1',
+      name: 'cv.pdf',
+      type: 'application/pdf',
+    });
+    expect(run).toHaveBeenLastCalledWith(
+      expect.anything(),
+      {
+        op: 'upload',
+        args: {
+          snapshot_id: 's1-test',
+          element_id: 'e2',
+          name: 'cv.pdf',
+          type: 'application/pdf',
+          data: 'YWJj',
+        },
+      },
+      4,
+    );
+    // the staged file went with it
+    await expect(
+      codeOf(
+        handlers['page.upload']({
+          snapshot_id: 's1-test',
+          element_id: 'e2',
+          upload_id: 'u1',
+          name: 'cv.pdf',
+          type: '',
+        }),
+      ),
+    ).resolves.toBe('not_found');
   });
 });

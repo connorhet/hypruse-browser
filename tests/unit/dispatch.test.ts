@@ -14,6 +14,8 @@ function handlers(overrides: Partial<Handlers> = {}): Handlers {
     'page.click': unused,
     'page.type': unused,
     'page.scroll': unused,
+    'page.upload': unused,
+    'files.stage': unused,
     'sites.top': unused,
     ...overrides,
   };
