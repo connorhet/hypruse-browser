@@ -6,6 +6,9 @@ This project follows Semantic Versioning. Dates are ISO 8601.
 
 ### Added
 
+- `page.upload` puts a file in a file field, in the top document or a frame, after the host has
+  sent it in chunks with `files.stage`: up to 10 MB, through the field's own input and change
+  events, with no picker.
 - Snapshots read the page's frames, cross-origin ones included. A frame's elements are
   named `f<frame>.e<n>`, placed in the top viewport by the frame's box, and clicked and typed
   into in their own frame; password and payment fields are refused there as everywhere.
