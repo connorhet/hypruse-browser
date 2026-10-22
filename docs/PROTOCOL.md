@@ -126,6 +126,19 @@ Element ids (`e1`, `e2` and so on) and group ids (`g1`, `g2`) are numbered withi
 snapshot. `rect` is in CSS pixels, relative to the viewport, rounded to whole pixels. `headings`
 holds the text of the visible `h1`, `h2` and `h3` elements, separated by a vertical bar.
 
+### Frames
+
+A snapshot covers the page's frames too, cross-origin ones included: a sign-in or payment form
+is often one. Each frame is its own document with its own numbering, so an element of frame 12
+is `f12.e3` and its list group `f12.g1`; `page.click` and `page.type` send such an id to that
+frame. The top document reports where it shows each frame and the URL it asked the frame to
+load, and a frame's elements are moved into the top viewport by that box. They are in view only
+when the box is. A frame whose box cannot be matched, such as a frame inside a frame, keeps its
+elements out of view with rects relative to itself. Frames with no area are left out. Elements
+are ordered top in view, frames in view (by where their box is), then the rest, before the cut
+to `max`. A frame the browser will not script is left out rather than failing the snapshot,
+and the top frame's `headings`, `title` and `url` describe the page.
+
 ### What counts as an element
 
 1. Candidates are `a[href]`, `button`, `input` except `type=hidden`, `textarea`, `select`,
@@ -269,7 +282,8 @@ the ends, and the target's `scrollHeight`.
 
 ## Injection
 
-Page operations run in the tab's top frame, in the extension's isolated world. The service
+Page operations run in the tab's top frame, in the extension's isolated world, and a snapshot
+in every frame as well, through `executeScript` with `allFrames`. The service
 worker calls the page agent with `chrome.scripting.executeScript({func})`. When the document has
 no agent yet, it first injects `content.js` with `executeScript({files})`. The agent installs
 itself once per document, and injecting again keeps the existing one along with its latest
@@ -278,7 +292,7 @@ snapshot.
 Operations on pages that Chrome will not let an extension script answer `restricted_page`:
 `chrome://`, `chrome-extension://` and other browser schemes, `about:` pages other than
 `about:blank`, the Chrome Web Store, and `file:` URLs when the extension has no file access.
-Frames other than the top frame are not read.
+An element of a frame that has navigated or gone since its snapshot is `stale_snapshot`.
 
 ## Events
 

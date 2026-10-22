@@ -50,12 +50,28 @@ export function chromeBrowserApi(): BrowserApi {
 
 export function chromeScriptRunner(): ScriptRunner {
   return {
-    async inject(tabId) {
-      await chrome.scripting.executeScript({ target: { tabId }, files: [CONTENT_FILE] });
+    async inject(tabId, frameId) {
+      const target = frameId === undefined ? { tabId } : { tabId, frameIds: [frameId] };
+      await chrome.scripting.executeScript({ target, files: [CONTENT_FILE] });
     },
-    async call(tabId, request, version) {
+    async callFrames(tabId, request, version) {
+      const target = { tabId, allFrames: true };
+      // a frame Chrome will not script is skipped; the install failing as a whole only
+      // means no frame gets an agent, which the call below then shows as no answer
+      await chrome.scripting.executeScript({ target, files: [CONTENT_FILE] }).catch(() => []);
       const results = await chrome.scripting.executeScript({
-        target: { tabId },
+        target,
+        func: (op: string, args: unknown, expected: string) => {
+          const agent = globalThis.__hypruseBrowser;
+          return agent?.version === expected ? agent.handle(op, args) : null;
+        },
+        args: [request.op, request.args, version],
+      });
+      return results.map((result) => ({ frameId: result.frameId, result: result.result }));
+    },
+    async call(tabId, request, version, frameId) {
+      const results = await chrome.scripting.executeScript({
+        target: frameId === undefined ? { tabId } : { tabId, frameIds: [frameId] },
         // Serialised and run in the page, so it may use nothing from this module.
         func: (op: string, args: unknown, expected: string) => {
           const agent = globalThis.__hypruseBrowser;

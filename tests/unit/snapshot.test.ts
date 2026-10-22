@@ -390,3 +390,17 @@ describe('Lists', () => {
     expect(lists.slot(document.querySelector('a')!)).toBeNull();
   });
 });
+
+describe('frame boxes', () => {
+  it('reports each rendered frame with the URL it was asked to load', () => {
+    const { snapshot } = snap(`
+      <iframe src="https://pay.example/card" data-rect="100 300 400 200"></iframe>
+      <iframe srcdoc="<p>hi</p>" data-rect="0 600 300 100"></iframe>
+      <iframe src="https://pixel.example/" data-rect="0 0 1 1"></iframe>
+      <iframe src="https://hidden.example/" data-rect="0 0 300 300" hidden></iframe>`);
+    expect(snapshot.frames).toEqual([
+      { url: 'https://pay.example/card', rect: [100, 300, 400, 200] },
+      { url: 'about:srcdoc', rect: [0, 600, 300, 100] },
+    ]);
+  });
+});

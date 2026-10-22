@@ -1,7 +1,13 @@
-import { ProtocolError, type PageSnapshot, type Snapshot } from '../shared/protocol';
+import {
+  ProtocolError,
+  type PageRequest,
+  type PageSnapshot,
+  type Snapshot,
+} from '../shared/protocol';
 import type { BrowserApi } from './chrome';
 import type { Handlers } from './dispatch';
-import type { PageRun } from './inject';
+import { mergeFrames, splitElementId, type FramePage } from './frames';
+import type { FrameRun, PageRun } from './inject';
 import { getTab, resolveTab, type ResolvedTab } from './tabs';
 
 type PageHandlers = Pick<Handlers, 'page.snapshot' | 'page.click' | 'page.type' | 'page.scroll'>;
@@ -23,6 +29,8 @@ export function snapshotIds(random: () => number = Math.random): () => string {
 export function createPageHandlers(deps: {
   api: BrowserApi;
   run: PageRun;
+  // The page's frames below the top one; without it a snapshot reads the top frame only.
+  runFrames?: FrameRun;
   nextSnapshotId?: () => string;
 }): PageHandlers {
   const { api, run } = deps;
@@ -57,6 +65,15 @@ export function createPageHandlers(deps: {
         op: 'snapshot',
         args: { snapshot_id: snapshotId, max, settle_ms },
       })) as PageSnapshot;
+      // the top frame has settled, so the frames are read as they are now
+      const frames: FramePage[] = deps.runFrames
+        ? (
+            await deps.runFrames(tab, {
+              op: 'snapshot',
+              args: { snapshot_id: snapshotId, max, settle_ms: 0 },
+            })
+          ).map(({ frameId, result }) => ({ frameId, page: result as PageSnapshot }))
+        : [];
       remember(snapshotId, tab.id);
       return {
         snapshot_id: page.snapshot_id,
@@ -65,18 +82,26 @@ export function createPageHandlers(deps: {
         title: page.title,
         headings: page.headings,
         viewport: page.viewport,
-        elements: page.elements,
+        elements: frames.length ? mergeFrames(page, frames, max) : page.elements,
       };
     },
 
-    'page.click': async ({ snapshot_id, element_id }) =>
-      run(await ownerOf(snapshot_id), { op: 'click', args: { snapshot_id, element_id } }),
+    'page.click': async ({ snapshot_id, element_id }) => {
+      const owner = await ownerOf(snapshot_id);
+      const [frameId, id] = splitElementId(element_id);
+      const request: PageRequest = { op: 'click', args: { snapshot_id, element_id: id } };
+      return frameId === undefined ? run(owner, request) : run(owner, request, frameId);
+    },
 
-    'page.type': async ({ snapshot_id, element_id, text, submit }) =>
-      run(await ownerOf(snapshot_id), {
+    'page.type': async ({ snapshot_id, element_id, text, submit }) => {
+      const owner = await ownerOf(snapshot_id);
+      const [frameId, id] = splitElementId(element_id);
+      const request: PageRequest = {
         op: 'type',
-        args: { snapshot_id, element_id, text, submit },
-      }),
+        args: { snapshot_id, element_id: id, text, submit },
+      };
+      return frameId === undefined ? run(owner, request) : run(owner, request, frameId);
+    },
 
     'page.scroll': async ({ tab_id, direction }) =>
       run(await resolveTab(api, tab_id), { op: 'scroll', args: { direction } }),

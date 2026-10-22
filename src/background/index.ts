@@ -3,7 +3,7 @@ import { chromeBrowserApi, chromeScriptRunner } from './chrome';
 import { createDispatcher, type Dispatch } from './dispatch';
 import { createTabEvents, watchTabs } from './events';
 import { buildHello } from './hello';
-import { createPageRunner } from './inject';
+import { createFrameRunner, createPageRunner } from './inject';
 import { createPageHandlers } from './page';
 import { NativeConnection } from './port';
 import { createSiteHandlers } from './sites';
@@ -20,7 +20,11 @@ const dispatch = createDispatcher(
     ping: () => Promise.resolve({ extension: version }),
     ...createTabHandlers(api),
     ...createSiteHandlers(api),
-    ...createPageHandlers({ api, run: createPageRunner(chromeScriptRunner(), version) }),
+    ...createPageHandlers({
+      api,
+      run: createPageRunner(chromeScriptRunner(), version),
+      runFrames: createFrameRunner(chromeScriptRunner(), version),
+    }),
   },
   { log },
 );

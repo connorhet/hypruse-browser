@@ -6,6 +6,10 @@ This project follows Semantic Versioning. Dates are ISO 8601.
 
 ### Added
 
+- Snapshots read the page's frames, cross-origin ones included. A frame's elements are
+  named `f<frame>.e<n>`, placed in the top viewport by the frame's box, and clicked and typed
+  into in their own frame; password and payment fields are refused there as everywhere.
+
 - `tabs.open` takes `where: "background"`: the tab opens without being activated and its
   window is not focused, so the browser does not take the person's focus.
 

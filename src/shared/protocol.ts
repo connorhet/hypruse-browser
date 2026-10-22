@@ -175,7 +175,12 @@ export type Viewport = {
   scroll_height: number;
 };
 
-// What the content script returns; the service worker adds tab_id.
+// Where a document shows a frame: the URL the frame was asked to load, and its box in the
+// document's viewport. The service worker places each frame's elements with it.
+export type FrameBox = { url: string; rect: [number, number, number, number] };
+
+// What the content script returns; the service worker adds tab_id, and keeps `frames` to
+// itself.
 export type PageSnapshot = {
   snapshot_id: string;
   url: string;
@@ -183,6 +188,7 @@ export type PageSnapshot = {
   headings: string;
   viewport: Viewport;
   elements: SnapshotElement[];
+  frames?: FrameBox[];
 };
 
 export type Snapshot = PageSnapshot & { tab_id: number };

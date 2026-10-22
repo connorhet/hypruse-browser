@@ -1,4 +1,5 @@
 import {
+  createFrameRunner,
   createPageRunner,
   injectionError,
   isRestrictedUrl,
@@ -6,7 +7,7 @@ import {
 } from '../../src/background/inject';
 import { createPageHandlers, snapshotIds } from '../../src/background/page';
 import type { ResolvedTab } from '../../src/background/tabs';
-import { ProtocolError, type PageRequest } from '../../src/shared/protocol';
+import { ProtocolError, type PageRequest, type Snapshot } from '../../src/shared/protocol';
 import { FakeBrowser } from '../helpers/fake-browser';
 
 async function codeOf(work: Promise<unknown>): Promise<string> {
@@ -263,5 +264,134 @@ describe('createPageHandlers', () => {
     await expect(codeOf(handlers['page.scroll']({ tab_id: 999, direction: 'up' }))).resolves.toBe(
       'not_found',
     );
+  });
+});
+
+describe('frames', () => {
+  function framed() {
+    const browser = new FakeBrowser();
+    const win = browser.addWindow({ focused: true });
+    const tabId = browser.addTab(win, 'https://shop.example/', { active: true });
+    const viewport = { width: 1000, height: 800, dpr: 1, scroll_y: 0, scroll_height: 800 };
+    const element = (id: string) => ({
+      id,
+      role: 'textbox',
+      name: id,
+      kind: 'input' as const,
+      rect: [0, 0, 10, 10] as [number, number, number, number],
+      in_view: true,
+    });
+    const run = vi.fn(async (_target: ResolvedTab, request: PageRequest) =>
+      request.op === 'snapshot'
+        ? {
+            snapshot_id: request.args.snapshot_id,
+            url: 'https://shop.example/',
+            title: 'Shop',
+            headings: '',
+            viewport,
+            elements: [element('e1')],
+            frames: [{ url: 'https://pay.example/', rect: [100, 100, 300, 200] }],
+          }
+        : {},
+    );
+    const runFrames = vi.fn(async () => [
+      {
+        frameId: 12,
+        result: {
+          snapshot_id: 's1-test',
+          url: 'https://pay.example/',
+          title: '',
+          headings: '',
+          viewport: { ...viewport, width: 300, height: 200 },
+          elements: [element('e1')],
+        },
+      },
+    ]);
+    const handlers = createPageHandlers({
+      api: browser.api(),
+      run,
+      runFrames,
+      nextSnapshotId: () => 's1-test',
+    });
+    return { handlers, run, runFrames, tabId };
+  }
+
+  it('merges the frames into the snapshot and keeps the frame boxes to itself', async () => {
+    const { handlers, runFrames } = framed();
+    const snapshot = (await handlers['page.snapshot']({ max: 120, settle_ms: 500 })) as Snapshot;
+    expect(snapshot.elements.map((e) => [e.id, e.rect])).toEqual([
+      ['e1', [0, 0, 10, 10]],
+      ['f12.e1', [100, 100, 10, 10]],
+    ]);
+    expect(snapshot).not.toHaveProperty('frames');
+    // the top frame settled already, so the frames are read without waiting again
+    expect(runFrames).toHaveBeenCalledWith(expect.anything(), {
+      op: 'snapshot',
+      args: { snapshot_id: 's1-test', max: 120, settle_ms: 0 },
+    });
+  });
+
+  it('sends a frame element to its frame with the id it has there', async () => {
+    const { handlers, run, tabId } = framed();
+    await handlers['page.snapshot']({ max: 120, settle_ms: 0 });
+    await handlers['page.type']({
+      snapshot_id: 's1-test',
+      element_id: 'f12.e1',
+      text: 'x',
+      submit: false,
+    });
+    expect(run).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: tabId }),
+      { op: 'type', args: { snapshot_id: 's1-test', element_id: 'e1', text: 'x', submit: false } },
+      12,
+    );
+    await handlers['page.click']({ snapshot_id: 's1-test', element_id: 'e1' });
+    expect(run).toHaveBeenLastCalledWith(expect.objectContaining({ id: tabId }), {
+      op: 'click',
+      args: { snapshot_id: 's1-test', element_id: 'e1' },
+    });
+  });
+});
+
+describe('createFrameRunner', () => {
+  const request: PageRequest = {
+    op: 'snapshot',
+    args: { snapshot_id: 's1', max: 5, settle_ms: 0 },
+  };
+
+  it('answers for the frames below the top one that answered', async () => {
+    const runner: ScriptRunner = {
+      inject: async () => undefined,
+      call: async () => null,
+      callFrames: async () => [
+        { frameId: 0, result: { ok: true, result: 'top' } },
+        { frameId: 4, result: { ok: true, result: 'card' } },
+        { frameId: 5, result: { ok: false, error: { code: 'internal', message: 'x' } } },
+        { frameId: 6, result: null },
+      ],
+    };
+    await expect(
+      createFrameRunner(runner, '0.1.0')(tab('https://shop.example/'), request),
+    ).resolves.toEqual([{ frameId: 4, result: 'card' }]);
+  });
+
+  it('gives up quietly when the frames cannot be scripted', async () => {
+    const runner: ScriptRunner = {
+      inject: async () => undefined,
+      call: async () => null,
+      callFrames: async () => {
+        throw new Error('Cannot access contents of the page');
+      },
+    };
+    await expect(
+      createFrameRunner(runner, '0.1.0')(tab('https://shop.example/'), request),
+    ).resolves.toEqual([]);
+    await expect(
+      createFrameRunner(runner, '0.1.0')(tab('chrome://settings'), request),
+    ).resolves.toEqual([]);
+  });
+
+  it('calls a stale frame stale', () => {
+    expect(injectionError(new Error('No frame with id 12 in tab 7.')).code).toBe('stale_snapshot');
   });
 });

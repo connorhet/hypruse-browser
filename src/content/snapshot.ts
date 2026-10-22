@@ -1,4 +1,4 @@
-import type { ElementKind, PageSnapshot, SnapshotElement } from '../shared/protocol';
+import type { ElementKind, FrameBox, PageSnapshot, SnapshotElement } from '../shared/protocol';
 import { collectCandidates } from './candidates';
 import type { Geometry, Rect } from './geometry';
 import { Lists, type ListSlot } from './lists';
@@ -42,6 +42,22 @@ function headingsOf(doc: Document, geometry: Geometry): string {
 
 function toRect(rect: Rect): [number, number, number, number] {
   return [Math.round(rect.x), Math.round(rect.y), Math.round(rect.width), Math.round(rect.height)];
+}
+
+// The frames this document shows, with the URL each was asked to load: a frame's own
+// document reports that URL too, which is how the service worker tells which box is whose.
+function framesOf(doc: Document, geometry: Geometry): FrameBox[] {
+  const boxes: FrameBox[] = [];
+  for (const frame of doc.querySelectorAll('iframe, frame')) {
+    const rect = geometry.rect(frame);
+    if (rect.width <= 1 || rect.height <= 1 || !isRendered(frame, geometry, rect)) continue;
+    const url =
+      frame.getAttribute('srcdoc') !== null
+        ? 'about:srcdoc'
+        : (frame as HTMLIFrameElement).src || 'about:blank';
+    boxes.push({ url, rect: toRect(rect) });
+  }
+  return boxes;
 }
 
 // Reads the page: named, visible, reachable things to click or type into, in reading order,
@@ -132,6 +148,7 @@ export function takeSnapshot(
       headings: headingsOf(doc, geometry),
       viewport,
       elements,
+      frames: framesOf(doc, geometry),
     },
     handles,
   };
