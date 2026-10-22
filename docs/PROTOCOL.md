@@ -115,6 +115,7 @@ each.
 ```
 {snapshot_id: "s7-k3x9", tab_id, url, title,
  headings: "up to 400 characters of h1..h3 text in document order",
+ text: "up to 1500 characters of the text shown in the viewport",
  viewport: {width, height, dpr, scroll_y, scroll_height},
  elements: [{id: "e3", role, name, kind, rect: [x, y, w, h], in_view,
              list?: {group: "g2", index: 1, size: 20}}]}
@@ -127,6 +128,16 @@ is answered with `stale_snapshot` and never mistaken for a newer snapshot of ano
 Element ids (`e1`, `e2` and so on) and group ids (`g1`, `g2`) are numbered within one
 snapshot. `rect` is in CSS pixels, relative to the viewport, rounded to whole pixels. `headings`
 holds the text of the visible `h1`, `h2` and `h3` elements, separated by a vertical bar.
+
+### Text
+
+`text` is what a person sees in the viewport, in document order, whitespace collapsed and cut at
+1500 characters: what a page says back after an action ("Paid", "No results", an error), which
+the element list does not carry. Text is read from elements whose box meets the viewport and
+that are not hidden (`display: none`, `visibility: hidden`, `aria-hidden="true"`, `inert`).
+Fields are never read: inputs, textareas, selects and editable regions are skipped, as are
+scripts and styles. The text of each frame shown in the viewport follows the top document's,
+separated by `|`, in the order the frames sit on the page.
 
 ### Frames
 

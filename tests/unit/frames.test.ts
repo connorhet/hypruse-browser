@@ -1,4 +1,4 @@
-import { mergeFrames, splitElementId } from '../../src/background/frames';
+import { mergeFrames, mergeText, splitElementId } from '../../src/background/frames';
 import type { PageSnapshot, SnapshotElement } from '../../src/shared/protocol';
 
 const viewport = { width: 1000, height: 800, dpr: 1, scroll_y: 0, scroll_height: 3000 };
@@ -12,7 +12,16 @@ function page(
   elements: SnapshotElement[],
   extra: Partial<PageSnapshot> = {},
 ): PageSnapshot {
-  return { snapshot_id: 's1', url, title: '', headings: '', viewport, elements, ...extra };
+  return {
+    snapshot_id: 's1',
+    url,
+    title: '',
+    headings: '',
+    text: '',
+    viewport,
+    elements,
+    ...extra,
+  };
 }
 
 describe('splitElementId', () => {
@@ -105,5 +114,30 @@ describe('mergeFrames', () => {
       'e1',
       'f1.e1',
     ]);
+  });
+});
+
+describe('mergeText', () => {
+  it('adds the text of frames shown in the viewport, in the order they sit', () => {
+    const top = page('https://shop.example/', [], {
+      text: 'Checkout Order total',
+      frames: [
+        { url: 'https://pay.example/card', rect: [100, 300, 400, 200] },
+        { url: 'https://ads.example/x', rect: [100, 2000, 300, 250] },
+      ],
+    });
+    const card = page('https://pay.example/card', [], { text: 'Paid' });
+    const ad = page('https://ads.example/x', [], { text: 'Buy now' });
+    expect(
+      mergeText(
+        top,
+        [
+          { frameId: 9, page: ad },
+          { frameId: 7, page: card },
+        ],
+        1500,
+      ),
+    ).toBe('Checkout Order total | Paid');
+    expect(mergeText(top, [{ frameId: 7, page: card }], 10)).toBe('Checkout O');
   });
 });

@@ -82,3 +82,21 @@ export function mergeFrames(
     ...framed.filter((element) => !element.in_view),
   ].slice(0, max);
 }
+
+// The page's visible text: the top document's, then that of each frame whose box is in view,
+// in the order the boxes sit on the page. Cut to `max` characters.
+export function mergeText(top: PageSnapshot, children: FramePage[], max: number): string {
+  const used = new Set<FrameBox>();
+  const shown: { y: number; x: number; text: string }[] = [];
+  for (const { page } of children) {
+    const box = boxOf(page.url, top.frames ?? [], used);
+    if (!box) continue;
+    used.add(box);
+    if (page.text && meets(box.rect, top.viewport)) {
+      shown.push({ y: box.rect[1], x: box.rect[0], text: page.text });
+    }
+  }
+  shown.sort((a, b) => a.y - b.y || a.x - b.x);
+  const text = [top.text, ...shown.map((frame) => frame.text)].filter(Boolean).join(' | ');
+  return text.length <= max ? text : text.slice(0, max).trimEnd();
+}

@@ -3,7 +3,7 @@
   "name": "hypruse browser",
   "short_name": "hypruse",
   "description": "Lets local programs list and switch tabs and read and operate pages through hypruse.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "minimum_chrome_version": "116",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtMkQNO3mhZ8anfBsLs16TIql5Nt4AFV784sklUdHEJr7n8vxZp5atk+xCcz7d6wjwOlUow15q4sK1VHYahxN2ENOPo2oT8aVKwAvXx8pmBIToUjM/Um848IePCrYHVFO/YgKzhLXzPc7WDJEpB8KQaUqURnU3Jve8bSsU7eRqfejzd25iorEDOp/9PI230tD7iltUtVukPJc/ik+1hk3/Nt7L7f7KIhRRZEX7qfne2NpALWBu9ZhKcKJyFrVkGTSnE8FrK66+pHwvlQcQf+iKqWkeacA4f8Z3vzFgi8AKONwRCNQAoySrK28u5LOSlVe+Q2bz6gx/Kh5HCN3P6jHGQIDAQAB",
   "incognito": "not_allowed",

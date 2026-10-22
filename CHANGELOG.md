@@ -2,6 +2,14 @@
 
 This project follows Semantic Versioning. Dates are ISO 8601.
 
+## 0.3.0 - 2026-10-22
+
+### Added
+
+- Snapshots carry `text`: up to 1500 characters of what the viewport shows, frames shown on it
+  included, so a caller can read what a page says back after an action. Field values and
+  editable regions are never read.
+
 ## 0.2.0 - 2026-10-22
 
 Speaks protocol version 1, with the additions below. Load or reload this build: Chrome

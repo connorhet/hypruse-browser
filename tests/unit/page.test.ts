@@ -162,6 +162,7 @@ describe('createPageHandlers', () => {
             url: target.url,
             title: 'Page',
             headings: '',
+            text: '',
             viewport: { width: 1, height: 1, dpr: 1, scroll_y: 0, scroll_height: 1 },
             elements: [],
           }
@@ -184,6 +185,7 @@ describe('createPageHandlers', () => {
       url: 'https://www.youtube.com/',
       title: 'Page',
       headings: '',
+      text: '',
       viewport: { width: 1, height: 1, dpr: 1, scroll_y: 0, scroll_height: 1 },
       elements: [],
     });

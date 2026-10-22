@@ -1,6 +1,6 @@
 {
   "name": "hypruse-browser",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "A Chrome extension that lets local programs read and drive browser tabs through native messaging and hypruse.",
   "license": "MIT",

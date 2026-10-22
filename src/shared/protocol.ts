@@ -202,6 +202,8 @@ export type PageSnapshot = {
   url: string;
   title: string;
   headings: string;
+  // The visible text in the viewport, frames shown on it included, cut to 1500 characters.
+  text: string;
   viewport: Viewport;
   elements: SnapshotElement[];
   frames?: FrameBox[];

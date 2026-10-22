@@ -6,7 +6,8 @@ import {
 } from '../shared/protocol';
 import type { BrowserApi } from './chrome';
 import type { Handlers } from './dispatch';
-import { mergeFrames, splitElementId, type FramePage } from './frames';
+import { mergeFrames, mergeText, splitElementId, type FramePage } from './frames';
+import { TEXT_MAX } from '../content/pagetext';
 import type { FrameRun, PageRun } from './inject';
 import type { Staging } from './uploads';
 import { getTab, resolveTab, type ResolvedTab } from './tabs';
@@ -87,6 +88,7 @@ export function createPageHandlers(deps: {
         url: page.url,
         title: page.title,
         headings: page.headings,
+        text: frames.length ? mergeText(page, frames, TEXT_MAX) : page.text,
         viewport: page.viewport,
         elements: frames.length ? mergeFrames(page, frames, max) : page.elements,
       };

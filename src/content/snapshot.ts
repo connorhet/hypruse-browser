@@ -4,6 +4,7 @@ import type { Geometry, Rect } from './geometry';
 import { Lists, type ListSlot } from './lists';
 import { accessibleName } from './names';
 import { visualOrder } from './order';
+import { pageText } from './pagetext';
 import { kindOf, roleOf } from './roles';
 import { collapse, cut, isInEditable } from './text';
 import { isHitTarget, isRendered, placement } from './visibility';
@@ -146,6 +147,7 @@ export function takeSnapshot(
       url: doc.URL,
       title: doc.title,
       headings: headingsOf(doc, geometry),
+      text: pageText(doc, geometry, viewport),
       viewport,
       elements,
       frames: framesOf(doc, geometry),
